@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+python-multipart
+boto3
+openai
+pandas
+numpy
+python-dotenv
+torch
+transformers
+huggingface-hub
+malaya
+holidays
+PySastrawi
+websockets
+fastapi-cache2

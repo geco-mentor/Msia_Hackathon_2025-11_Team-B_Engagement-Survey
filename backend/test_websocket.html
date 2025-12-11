@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Risk Alerts Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.connected {
+            background: #10b981;
+        }
+        
+        .status-indicator.disconnected {
+            background: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-connect {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-disconnect {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-clear {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .alerts-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .alert {
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 5px solid;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .alert-department {
+            background: #fef2f2;
+            border-color: #dc2626;
+        }
+        
+        .alert-employee {
+            background: #fff7ed;
+            border-color: #ea580c;
+        }
+        
+        .alert-connection {
+            background: #f0f9ff;
+            border-color: #0284c7;
+        }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .alert-type {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .alert-time {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .alert-body {
+            color: #4b5563;
+        }
+        
+        .alert-field {
+            margin: 5px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .alert-field strong {
+            min-width: 150px;
+            color: #1f2937;
+        }
+        
+        .no-alerts {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+        
+        .no-alerts-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Real-Time Risk Alerts Monitor</h1>
+            <p>WebSocket connection to: <code>ws://localhost:8000/api/v1/ws/alerts</code></p>
+            
+            <div class="status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-connect" onclick="connect()">Connect</button>
+                <button class="btn-disconnect" onclick="disconnect()">Disconnect</button>
+                <button class="btn-clear" onclick="clearAlerts()">Clear Alerts</button>
+            </div>
+        </div>
+        
+        <div class="alerts-container" id="alertsContainer">
+            <div class="no-alerts">
+                <div class="no-alerts-icon">📭</div>
+                <p>No alerts yet. Connect to start monitoring.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let reconnectInterval = null;
+        
+        function updateStatus(connected) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                text.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                text.textContent = 'Disconnected';
+            }
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+            
+            ws = new WebSocket('ws://localhost:8000/api/v1/ws/alerts');
+            
+            ws.onopen = () => {
+                console.log('✅ Connected to WebSocket');
+                updateStatus(true);
+                addAlert({
+                    type: 'connection',
+                    message: 'Successfully connected to WebSocket server',
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Send ping every 30 seconds
+                reconnectInterval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send('ping');
+                    }
+                }, 30000);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('📨 Received:', data);
+                addAlert(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('❌ WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('🔌 Disconnected from WebSocket');
+                updateStatus(false);
+                clearInterval(reconnectInterval);
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                clearInterval(reconnectInterval);
+            }
+        }
+        
+        function clearAlerts() {
+            const container = document.getElementById('alertsContainer');
+            container.innerHTML = `
+                <div class="no-alerts">
+                    <div class="no-alerts-icon">📭</div>
+                    <p>No alerts yet. Connect to start monitoring.</p>
+                </div>
+            `;
+        }
+        
+        function addAlert(data) {
+            const container = document.getElementById('alertsContainer');
+            
+            // Remove "no alerts" message if present
+            const noAlerts = container.querySelector('.no-alerts');
+            if (noAlerts) {
+                noAlerts.remove();
+            }
+            
+            const alertDiv = document.createElement('div');
+            const timestamp = new Date(data.timestamp).toLocaleString();
+            
+            if (data.type === 'connection' || data.type === 'pong') {
+                alertDiv.className = 'alert alert-connection';
+                alertDiv.innerHTML = `
+                    <div class="alert-header">
+                        <div class="alert-type">📡 ${data.type === 'pong' ? 'Ping Response' : 'Connection'}</div>
+                        <div class="alert-time">${timestamp}</div>
+                    </div>
+                    <div class="alert-body">
+                        ${data.message || 'Pong received'}
+                    </div>
+                `;
+            } else if (data.type === 'department_critical') {
+                const dept = data.data;
+                alertDiv.className = 'alert alert-department';
+                alertDiv.innerHTML = `
+                    <div class="alert-header">
+                        <div class="alert-type">⚠️ CRITICAL DEPARTMENT RISK</div>
+                        <div class="alert-time">${timestamp}</div>
+                    </div>
+                    <div class="alert-body">
+                        <div class="alert-field"><strong>Department:</strong> <span>${dept.department_name}</span></div>
+                        <div class="alert-field"><strong>Department ID:</strong> <span>${dept.department_id}</span></div>
+                        <div class="alert-field"><strong>Risk Level:</strong> <span style="color: #dc2626; font-weight: bold;">${dept.overall_risk.toUpperCase()}</span></div>
+                        <div class="alert-field"><strong>Engagement Score:</strong> <span>${dept.engagement_score}</span></div>
+                    </div>
+                `;
+            } else if (data.type === 'employee_stress') {
+                const emp = data.data;
+                alertDiv.className = 'alert alert-employee';
+                alertDiv.innerHTML = `
+                    <div class="alert-header">
+                        <div class="alert-type">😰 HIGH EMPLOYEE STRESS</div>
+                        <div class="alert-time">${timestamp}</div>
+                    </div>
+                    <div class="alert-body">
+                        <div class="alert-field"><strong>Employee ID:</strong> <span>${emp.employee_id}</span></div>
+                        <div class="alert-field"><strong>Name:</strong> <span>${emp.employee_name}</span></div>
+                        <div class="alert-field"><strong>Department:</strong> <span>${emp.department}</span></div>
+                        <div class="alert-field"><strong>Position:</strong> <span>${emp.position}</span></div>
+                        <div class="alert-field"><strong>Stress Rate:</strong> <span style="color: #ea580c; font-weight: bold;">${emp.stress_rate}%</span></div>
+                        <div class="alert-field"><strong>Engagement Rate:</strong> <span>${emp.engagement_rate}%</span></div>
+                        <div class="alert-field"><strong>Attrition Rate:</strong> <span>${emp.attrition_rate}%</span></div>
+                    </div>
+                `;
+            }
+            
+            // Insert at the top
+            container.insertBefore(alertDiv, container.firstChild);
+        }
+        
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            connect();
+        });
+    </script>
+</body>
+</html>

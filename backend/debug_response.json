@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "totalEmployees": 26,
+    "teamsAtRisk": 0,
+    "avgEngagement": 71.2,
+    "engagementTrend": 0.0,
+    "burnoutAlerts": 4,
+    "attritionRiskCount": 7,
+    "feedbackResponseRate": 0.0,
+    "generatedAt": "2025-12-11T16:01:40.993595"
+  },
+  "sync_status": "Read Only | Raw: 400 | After Date: 26 (month) | Final: 26"
+}
