@@ -32,6 +32,7 @@ export const useSummaryMetrics = (dateRange: string, department?: string) => {
                 if (department && department !== 'All Departments' && department !== 'all') {
                     url.searchParams.append('department', department);
                 }
+                console.log(url.toString());
 
                 const response = await fetch(url.toString());
 

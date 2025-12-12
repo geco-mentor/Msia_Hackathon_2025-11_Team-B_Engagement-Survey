@@ -111,10 +111,7 @@ export function ThemeAnalysis({ dateRange = 'month', sentiment }: ThemeAnalysisP
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-foreground">{theme.impactScore}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Impact</div>
-                </div>
+
               </div>
 
               {/* Frequency bar */}

@@ -257,7 +257,7 @@ const Hotspots = () => {
                                             group flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg border transition-all duration-200
                                             ${isActive
                             ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-900'
-                            : 'bg-card hover:bg-accent/50 hover:border-accent'
+                            : 'bg-card  hover:border-accent'
                           }
                                         `}
                       >
@@ -270,7 +270,7 @@ const Hotspots = () => {
                             <h4 className={`font-semibold ${isActive ? 'text-green-800 dark:text-green-300' : 'text-foreground'}`}>
                               {action.title}
                             </h4>
-                            <Badge variant={action.priority === 'High' ? 'destructive' : 'secondary'} className="text-[10px] h-5">
+                            <Badge variant={action.priority === 'High' ? 'destructive' : 'secondary'} className="text-[10px] h-5 w-[fit-content]">
                               {action.priority} Priority
                             </Badge>
                           </div>
@@ -279,7 +279,7 @@ const Hotspots = () => {
                           </p>
                         </div>
 
-                        <Button
+                        {/* <Button
                           variant={isActive ? "outline" : "default"}
                           size="sm"
                           onClick={() => toggleAction(index)}
@@ -292,7 +292,7 @@ const Hotspots = () => {
                                             `}
                         >
                           {isActive ? 'Active' : 'Activate'}
-                        </Button>
+                        </Button> */}
                       </div>
                     );
                   })}

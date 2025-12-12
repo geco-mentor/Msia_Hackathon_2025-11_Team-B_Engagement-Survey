@@ -35,11 +35,11 @@ const Index = () => {
   // Fetch trend data from API
   // Map dateRange to granularity
   const trendParams = useMemo(() => {
-    let granularity: 'daily' | 'weekly' | 'monthly' = 'weekly';
+    let granularity: 'daily' | 'week' | 'month' = 'week';
     if (filters.dateRange === 'week') granularity = 'daily';
-    if (filters.dateRange === 'month') granularity = 'weekly';
-    if (filters.dateRange === 'quarter') granularity = 'weekly'; // or monthly
-    if (filters.dateRange === 'year') granularity = 'monthly';
+    if (filters.dateRange === 'month') granularity = 'week';
+    if (filters.dateRange === 'quarter') granularity = 'month';
+    if (filters.dateRange === 'year') granularity = 'month';
 
     return {
       granularity,

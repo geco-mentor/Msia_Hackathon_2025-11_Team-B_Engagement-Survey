@@ -104,35 +104,33 @@ def get_engagement_trends(
     # Set the date as index for resampling
     df_merged.set_index('submission_date', inplace=True)
     
-    # Define Resampling Rule
-    # 'D' = Daily, 'W' = Weekly (ending Sunday), 'ME' = Month End
     rule_map = {
         'daily': 'D',
-        'weekly': 'W', 
-        'monthly': 'ME' 
+        'weekly': 'W-MON', # Group by weeks starting Monday (optional preference)
+        'monthly': 'MS'    # Changed to MS (Month Start) or 'ME'
     }
+    # Note: 'ME' labels the bin at the END of the month. 
+    # 'MS' labels it at the START. Charts often prefer MS for "November 2024".
+    
     resample_rule = rule_map.get(granularity.lower(), 'W')
 
-    # Aggregation logic
-    agg_funcs = {
-        'engagement_rate': 'mean',
-        'burnout_rate': 'mean',
-        'attrition_rate': 'mean'
-    }
-    
-    # Perform Resampling
-    # We assume 'engagement_rate' etc are already numeric. If not, coerce them:
+    # Ensure numeric
     cols_to_numeric = ['engagement_rate', 'burnout_rate', 'attrition_rate']
     for col in cols_to_numeric:
         if col in df_merged.columns:
             df_merged[col] = pd.to_numeric(df_merged[col], errors='coerce')
 
-    # Resample and calculate mean, dropping periods with no data
-    trend_data = df_merged[cols_to_numeric].resample(resample_rule).mean().dropna(how='all')
-
-    # 5. Format Output
-    results = []
+    # Resample
+    trend_data = df_merged[cols_to_numeric].resample(resample_rule).mean()
     
+    # CRITICAL: Only drop rows where ALL columns are NaN
+    trend_data = trend_data.dropna(how='all')
+    
+    # If empty after dropping NaNs, return empty list
+    if trend_data.empty:
+         return {"success": True, "data": []}
+
+    results = []
     for date_idx, row in trend_data.iterrows():
         
         # Format Date Label based on Granularity

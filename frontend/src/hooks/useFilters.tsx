@@ -21,7 +21,7 @@ export interface UseFiltersReturn {
     refetch: () => Promise<void>;
 }
 
-const API_BASE_URL = import.meta.env.BACKEND_API || 'http://127.0.0.1:8000/api/v1';
+const API_BASE_URL = import.meta.env.BACKEND_API || 'http://localhost:8000/api/v1';
 
 /**
  * Custom hook to fetch filter options from the backend API
@@ -37,7 +37,7 @@ export const useFilters = (autoFetch: boolean = true): UseFiltersReturn => {
         setError(null);
 
         try {
-            const url = `${API_BASE_URL}/filters`;
+            const url = `${API_BASE_URL}/filters/`;
 
             const response = await fetch(url, {
                 method: 'GET',
@@ -45,7 +45,7 @@ export const useFilters = (autoFetch: boolean = true): UseFiltersReturn => {
                     'Content-Type': 'application/json',
                 },
             });
-
+            console.log(response, "response")
             if (!response.ok) {
                 throw new Error(`API request failed with status ${response.status}`);
             }

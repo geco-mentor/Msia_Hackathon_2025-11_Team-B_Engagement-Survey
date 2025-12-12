@@ -17,10 +17,10 @@ export interface TrendResponse {
 export interface TrendQueryParams {
     start_date?: string; // YYYY-MM-DD format
     end_date?: string; // YYYY-MM-DD format
-    granularity?: 'daily' | 'weekly' | 'monthly';
+    granularity?: 'daily' | 'week' | 'month';
     department?: string;
     position?: string;
-    dateRange?: 'daily' | 'weekly' | 'monthly';
+    dateRange?: 'daily' | 'week' | 'month';
 }
 
 // Hook return type
@@ -31,7 +31,7 @@ export interface UseTrendReturn {
     refetch: (params?: TrendQueryParams) => Promise<void>;
 }
 
-const API_BASE_URL = import.meta.env.BACKEND_API || 'http://127.0.0.1:8000/api/v1';
+const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 /**
  * Custom hook to fetch engagement trends from the backend API
@@ -50,38 +50,35 @@ export const useTrend = (
         setLoading(true);
         setError(null);
 
+        // MERGE params: Use passed params, fallback to initialParams
+        const activeParams = { ...initialParams, ...params };
+
         try {
-            // Build query string from parameters
             const queryParams = new URLSearchParams();
 
-            if (params?.start_date) {
-                queryParams.append('start_date', params.start_date);
+            if (activeParams.start_date) queryParams.append('start_date', activeParams.start_date);
+            if (activeParams.end_date) queryParams.append('end_date', activeParams.end_date);
+
+            // Prioritize explicit granularity, ignore dateRange string here
+            if (activeParams.granularity) {
+                queryParams.append('granularity', activeParams.granularity);
             }
 
-            if (params?.end_date) {
-                queryParams.append('end_date', params.end_date);
+            if (activeParams.department && activeParams.department !== 'all') {
+                queryParams.append('department', activeParams.department);
             }
 
-            if (params?.granularity) {
-                queryParams.append('granularity', params.granularity || params.dateRange);
-            }
-
-            if (params?.department) {
-                queryParams.append('department', params.department);
-            }
-
-            if (params?.position) {
-                queryParams.append('position', params.position);
+            if (activeParams.position) {
+                queryParams.append('position', activeParams.position);
             }
 
             const queryString = queryParams.toString();
             const url = `${API_BASE_URL}/trends/engagement?${queryString}`;
+            console.log("Fetching URL:", url); // Debugging
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
             });
 
             if (!response.ok) {
@@ -89,8 +86,6 @@ export const useTrend = (
             }
 
             const result: TrendResponse = await response.json();
-
-            console.log(result, "result")
 
             if (result.success) {
                 setData(result.data);
@@ -104,14 +99,14 @@ export const useTrend = (
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [initialParams]); // Re-create fetch function if initialParams change
 
-    // Auto-fetch on mount if enabled
+    // Effect to trigger fetch when params change
     useEffect(() => {
         if (autoFetch) {
-            fetchTrends(initialParams);
+            fetchTrends();
         }
-    }, [autoFetch, initialParams, fetchTrends]);
+    }, [fetchTrends, autoFetch]);
 
     return {
         data,

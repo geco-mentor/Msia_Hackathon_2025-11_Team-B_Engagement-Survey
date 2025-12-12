@@ -353,9 +353,10 @@ def generate_ai_recommendations(employee_data, latest_fb_data, avg_workload, cur
     ]
     """
     response = client.chat.completions.create(
-            model="llama3.2", messages=[{"role": "user", "content": prompt}], temperature=0.7
+            model="llama3.2", messages=[{"role": "user", "content": prompt}], temperature=0.5
         )
-    return json.loads(response.choices[0].message.content)
+    return clean_and_parse_ai_json(response.choices[0].message.content)
+
 
 
 @router.post("/{employee_id}/recommendations", response_model=RecommendationResponse)
@@ -399,3 +400,52 @@ async def get_employee_recommendations(employee_id: str = Path(..., title="The I
     except Exception as e:
         print(f"Error generating actions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+import re
+import json
+
+def clean_and_parse_ai_json(llm_output: str) -> List[Dict[str, Any]]:
+    """
+    Sanitizes LLM output to extract and parse a JSON array.
+    Handles Markdown backticks, introductory text, and basic formatting errors.
+    """
+    try:
+        # 1. Strip Markdown code blocks (```json ... ```)
+        # Replaces ```json or ``` with empty string
+        text = re.sub(r'```json\s*', '', llm_output, flags=re.IGNORECASE)
+        text = re.sub(r'```', '', text)
+        
+        # 2. Locate the JSON Array
+        # Find the first '[' and the last ']' to ignore any text outside the array
+        start_index = text.find('[')
+        end_index = text.rfind(']')
+
+        if start_index != -1 and end_index != -1 and end_index > start_index:
+            text = text[start_index : end_index + 1]
+        else:
+            # If no brackets found, return a fallback error to prevent 500 crashes
+            print(f"Warning: No JSON array found in LLM output: {llm_output[:100]}...")
+            return [{
+                "title": "Format Error",
+                "description": "AI response could not be parsed.",
+                "priority": "Low"
+            }]
+
+        # 3. Parse JSON
+        data = json.loads(text)
+
+        # 4. Basic Schema Validation (Ensure it's a list)
+        if not isinstance(data, list):
+            data = [data] # Wrap in list if it returned a single object
+
+        return data
+
+    except json.JSONDecodeError as e:
+        print(f"JSON Parsing Failed: {e}")
+        print(f"Raw Text: {llm_output}")
+        # Return a safe fallback so the frontend receives something
+        return [{
+            "title": "Parsing Error",
+            "description": "The system encountered an error processing the AI recommendation.",
+            "priority": "Medium"
+        }]
